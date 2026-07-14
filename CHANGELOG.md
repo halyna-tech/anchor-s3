@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `S3ObjectLockAnchor::anchor()` writes `CheckpointDigest::for($checkpoint)` to `{prefix}/{checkpoint-id}.digest` via `PutObject` with `ObjectLockMode` + `ObjectLockRetainUntilDate`, returning a receipt whose `reference` is `bucket/key@versionId` and whose `proof` is the object ETag.
 - `S3ObjectLockAnchor::verify()` re-reads the exact object version named in the receipt (`GetObject`), confirms the stored bytes equal the recomputed `CheckpointDigest`, confirms Object Lock metadata is present, and confirms the ETag matches the receipt proof. Network errors / missing objects verify as `false`.
 - README documenting Object-Lock bucket setup, the minimal IAM action set (no delete), provider registration in `chronicle.anchoring.providers`, and the anchor/verify trust model.
+- Three-tier test layout via Pest groups (`unit`, `localstack`, `aws`) with Composer scripts `test:unit` (zero-config default, excludes the network tiers), `test:localstack`, `test:aws`, and `test:all`. The default `composer test` still runs lint + types + unit only, so a first contribution needs no Docker, no AWS account, and no network.
+- Real-AWS characterization tests documenting that anchoring against a bucket without Object Lock (or without versioning) leaves no deletable object at the target key - the refusal is enforced by AWS at `PutObject`, because the adapter sends retention on the same write. These tests fail loudly if a future change ever decouples retention from the write.
 
 ---
 
