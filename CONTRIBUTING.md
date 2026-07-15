@@ -27,11 +27,11 @@ The default suite runs against a mocked S3 client. It covers the adapter's logic
 
 ## The three tiers of tests
 
-| Tier          | Needs          | When it runs                                         |
-|---------------|----------------|------------------------------------------------------|
-| Unit / mocked | Nothing        | Always, including `composer test` and CI on every PR |
-| LocalStack    | Docker         | Opt-in locally; CI on every PR                       |
-| Real AWS      | An AWS account | Opt-in locally; CI on `main` only                    |
+| Tier          | Needs          | When it runs                                                       |
+|---------------|----------------|--------------------------------------------------------------------|
+| Unit / mocked | Nothing        | Always - `composer test` and CI on every push and PR (incl. forks) |
+| LocalStack    | Docker         | Opt-in locally; CI on every push and PR (incl. forks)              |
+| Real AWS      | An AWS account | Opt-in locally; CI on push to `main` and a nightly schedule        |
 
 Most contributions never need to leave the first tier. Reach for the others when you're changing how the package talks to S3 rather than what it decides to say.
 
@@ -39,7 +39,8 @@ Most contributions never need to leave the first tier. Reach for the others when
 
 ```bash
 docker compose up -d localstack
-composer test:integration
+composer test:localstack
+docker compose down   # when you're finished
 ```
 
 This exercises the real S3 API surface without touching AWS. It is the right tier for anything touching bucket configuration, versioning, or the shape of the requests.
@@ -50,13 +51,18 @@ This exercises the real S3 API surface without touching AWS. It is the right tie
 
 Only necessary when changing retention behavior, and honestly, ask in the issue before you go here - a maintainer may be able to run it for you rather than have you provision infrastructure.
 
-If you do:
+If you do: set the values from `.env.example` in your shell environment. The tests read the process environment directly, and a plain `.env` file is **not** autoloaded (testbench boots its app from its own skeleton path, not this repo), so exporting is what actually works:
 
 ```bash
-cp .env.example .env
-# fill in AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, ANCHOR_S3_BUCKET
+export ANCHOR_S3_AWS_TESTS=1                        # opt-in; without it the tier skips
+export AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...  AWS_REGION=eu-central-1
+export ANCHOR_S3_TEST_BUCKET=anchor-s3-your-bucket
+export ANCHOR_S3_TEST_RETENTION_MODE=GOVERNANCE     # the tier hard-fails on any other value
+
 composer test:aws
 ```
+
+A convenient pattern: `cp .env.example .env`, fill it in, then `set -a && source .env && set +a` before the command. One test - anchoring fails loudly when the credentials lack `s3:PutObjectRetention` - additionally needs a second, restricted key in `ANCHOR_S3_TEST_NOPERM_KEY` / `ANCHOR_S3_TEST_NOPERM_SECRET`; it skips cleanly without them.
 
 **Read this before you create the bucket.**
 
@@ -67,7 +73,54 @@ Object Lock has two retention modes, and the difference is not academic:
 - **Governance mode** - a user with the right permission can shorten or remove retention. Use this. Always, in development.
 - **Compliance mode** - retention cannot be shortened or removed by *anyone*, including the account root user, until it expires. This is the mode real deployments want, and it is exactly why you must not use it in a test bucket. Set a 7-year retention on a test object in Compliance mode, and you have created an object you will be paying to store until 2033, with no way to delete it. There is no support ticket that undoes this.
 
-Use Governance mode and short retention periods (minutes, not years) in every test bucket. Delete the bucket when you're done.
+Use Governance mode and the shortest retention the tests need - they anchor with `retain_days => 1`, the adapter's minimum - in every test bucket. Delete throwaway buckets when you're done.
+
+**Provisioning a bucket** (once, as an admin - versioning and Object Lock are simplest to enable at creation):
+
+```bash
+aws s3api create-bucket --bucket anchor-s3-<unique> --region eu-central-1 \
+  --create-bucket-configuration LocationConstraint=eu-central-1 \
+  --object-lock-enabled-for-bucket
+```
+
+Point `ANCHOR_S3_TEST_BUCKET` at that name, and do **not** set a bucket-level default retention - the tests apply Governance retention per object. As a backstop for anything a failed cleanup leaves behind, add a lifecycle rule that expires current versions after 1 day, deletes noncurrent versions after 1 day, and aborts incomplete multipart uploads; it can only remove an object once its (1-day) retention has lapsed.
+
+**Scoped IAM policy** - grant the test principal only these actions, and only against `anchor-s3-*` buckets, so it can never reach anything else. The `anchor-s3-*` scope also covers the throwaway buckets the characterization tests create and delete:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketObjectLockConfiguration",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:PutObjectRetention",
+        "s3:GetObjectRetention",
+        "s3:BypassGovernanceRetention"
+      ],
+      "Resource": [
+        "arn:aws:s3:::anchor-s3-*",
+        "arn:aws:s3:::anchor-s3-*/*"
+      ]
+    }
+  ]
+}
+```
+
+`s3:BypassGovernanceRetention` is what lets a test remove its own Governance-locked object during cleanup - which is exactly why Governance mode is safe here and Compliance mode is not.
 
 ## Standards
 
