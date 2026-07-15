@@ -31,6 +31,22 @@ pest()->extends(TestCase::class)
     ->in('Aws');
 
 /**
+ * LocalStack tier. Talks to a real S3 API surface but a NON-ENFORCING one:
+ * LocalStack emulates the Object Lock API and returns 200 for a retention it
+ * does not enforce. This tier proves the CONVERSATION is correct. It proves
+ * NOTHING about immutability - that lives only in the `aws` group.
+ */
+pest()->extends(TestCase::class)
+    ->use(RefreshDatabase::class)
+    ->group('localstack')
+    ->beforeEach(function () {
+        if (! localStackReachable()) {
+            $this->markTestSkipped('skipped: LocalStack not reachable at '.localStackEndpoint().' (run `docker compose up -d localstack`).');
+        }
+    })
+    ->in('LocalStack');
+
+/**
  * Plain object reference for use as an actor / subject (core's
  * DefaultReferenceResolver resolves any object with a public $id).
  */
@@ -222,4 +238,50 @@ function deleteBucketRecursive(S3Client $s3, string $bucket): void
         // Best-effort: nothing here can create an undeletable object, so a
         // failed sweep leaves only ordinary, manually-removable objects.
     }
+}
+
+function localStackEndpoint(): string
+{
+    $endpoint = getenv('ANCHOR_S3_LOCALSTACK_ENDPOINT');
+
+    return is_string($endpoint) && $endpoint !== '' ? $endpoint : 'http://localhost:4566';
+}
+
+function localStackReachable(): bool
+{
+    $parts = parse_url(localStackEndpoint());
+    $host = is_array($parts) && isset($parts['host']) ? (string) $parts['host'] : 'localhost';
+    $port = is_array($parts) && isset($parts['port']) ? (int) $parts['port'] : 4566;
+
+    $conn = @fsockopen($host, $port, $errno, $errstr, 1.0);
+    if ($conn === false) {
+        return false;
+    }
+    fclose($conn);
+
+    return true;
+}
+
+function makeLocalStackClient(): S3Client
+{
+    return new S3Client([
+        'region' => 'us-east-1',
+        'version' => 'latest',
+        'endpoint' => localStackEndpoint(),
+        'use_path_style_endpoint' => true,
+        'credentials' => ['key' => 'test', 'secret' => 'test'],
+    ]);
+}
+
+/**
+ * Create a versioned, Object-Lock-enabled bucket on LocalStack and return its
+ * name. ObjectLockEnabledForBucket implicitly enables versioning.
+ */
+function createLocalStackLockBucket(S3Client $s3, ?string $name = null): string
+{
+    $name = $name ?? 'anchor-ls-'.bin2hex(random_bytes(8));
+    $s3->createBucket(['Bucket' => $name, 'ObjectLockEnabledForBucket' => true]);
+    $s3->waitUntil('BucketExists', ['Bucket' => $name]);
+
+    return $name;
 }

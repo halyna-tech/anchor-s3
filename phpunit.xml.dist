@@ -25,6 +25,9 @@
         <testsuite name="Aws">
             <directory>tests/Aws</directory>
         </testsuite>
+        <testsuite name="LocalStack">
+            <directory>tests/LocalStack</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
