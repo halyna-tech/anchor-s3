@@ -97,7 +97,6 @@ it('defaults to GOVERNANCE when no mode is configured', function () {
     expect($captured['ObjectLockMode'])->toBe('GOVERNANCE');
 });
 
-
 it('falls back to GOVERNANCE when mode is set to an unrecognized value', function () {
     // Anything that is not exactly 'COMPLIANCE' must resolve to GOVERNANCE - a
     // typo or garbage value must fail-safe, never silently select COMPLIANCE.
@@ -120,7 +119,6 @@ it('falls back to GOVERNANCE when mode is set to an unrecognized value', functio
     // be honored as COMPLIANCE - it falls through to the safe default.
     expect($captured['ObjectLockMode'])->toBe('GOVERNANCE');
 });
-
 
 it('honors an explicit COMPLIANCE mode', function () {
     // The opt-in path still works: an exact 'COMPLIANCE' must reach the wire, so
