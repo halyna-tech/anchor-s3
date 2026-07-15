@@ -22,6 +22,12 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <testsuite name="Aws">
+            <directory>tests/Aws</directory>
+        </testsuite>
+        <testsuite name="LocalStack">
+            <directory>tests/LocalStack</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

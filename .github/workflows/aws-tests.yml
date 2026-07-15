@@ -1,0 +1,41 @@
+name: Real-AWS Tests
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  aws:
+    name: Real-AWS tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Gate on the secret so this skips cleanly rather than failing when absent
+    # (e.g. on a fork that somehow reaches this workflow).
+    if: ${{ github.repository == 'laravel-chronicle/anchor-s3' }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: 8.4
+          extensions: sodium
+          coverage: none
+      - run: composer update --prefer-dist --no-interaction
+      - name: Execute real-AWS tier
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.ANCHOR_S3_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ANCHOR_S3_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.ANCHOR_S3_AWS_REGION }}
+          ANCHOR_S3_TEST_BUCKET: ${{ secrets.ANCHOR_S3_TEST_BUCKET }}
+          ANCHOR_S3_TEST_RETENTION_MODE: GOVERNANCE
+          ANCHOR_S3_AWS_TESTS: '1'
+        run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$ANCHOR_S3_TEST_BUCKET" ]; then
+            echo "AWS secrets not configured; skipping real-AWS tier."
+            exit 0
+          fi
+          vendor/bin/pest --group=aws --ci

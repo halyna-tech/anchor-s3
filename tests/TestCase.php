@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Chronicle\AnchorS3\Tests;
 
 use Chronicle\AnchorS3\AnchorS3ServiceProvider;

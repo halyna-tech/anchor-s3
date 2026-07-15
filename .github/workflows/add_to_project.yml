@@ -5,6 +5,11 @@ on:
     types: [opened, reopened]
   pull_request_target:
     types: [opened, reopened]
+
+# The add-to-project action authenticates with PROJECT_BOARD_TOKEN and uses the
+# issue/PR node id from the event payload, so the automatic GITHUB_TOKEN needs
+# no permissions of its own. Grant it none (least privilege).
+permissions: {}
  
 jobs:
   add-to-project:
