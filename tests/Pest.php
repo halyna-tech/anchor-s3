@@ -285,3 +285,56 @@ function createLocalStackLockBucket(S3Client $s3, ?string $name = null): string
 
     return $name;
 }
+
+function awsLockBucket(): string
+{
+    $bucket = getenv('ANCHOR_S3_TEST_BUCKET');
+
+    return is_string($bucket) ? $bucket : '';
+}
+
+/**
+ * Skip reason for tests that need the pre-provisioned Object-Lock bucket. Skips
+ * when the bucket is unset. FAILS HARD (throws) when a retention mode is set to
+ * anything but GOVERNANCE - a Compliance-mode test could create a billable,
+ * undeletable object with no recourse, so it must never run.
+ */
+function awsLockBucketSkipReason(): ?string
+{
+    if ($reason = awsSkipReason()) {
+        return $reason;
+    }
+
+    if (awsLockBucket() === '') {
+        return 'skipped: set ANCHOR_S3_TEST_BUCKET to a pre-provisioned Object-Lock bucket to run the immutability tests.';
+    }
+
+    $mode = getenv('ANCHOR_S3_TEST_RETENTION_MODE');
+    if ($mode !== 'GOVERNANCE') {
+        throw new RuntimeException(
+            'REFUSING TO RUN: ANCHOR_S3_TEST_RETENTION_MODE must be exactly GOVERNANCE (got '.
+            var_export($mode, true).'). Compliance-mode retention cannot be removed by anyone until it '.
+            'expires - a test must never create one.'
+        );
+    }
+
+    return null;
+}
+
+/**
+ * Remove Governance retention from a specific object version, then delete that
+ * version. Used only in teardown so a failed assertion still cleans up.
+ */
+function bypassDeleteObjectVersion(S3Client $s3, string $bucket, string $key, string $versionId): void
+{
+    try {
+        $s3->deleteObject([
+            'Bucket' => $bucket,
+            'Key' => $key,
+            'VersionId' => $versionId,
+            'BypassGovernanceRetention' => true,
+        ]);
+    } catch (Throwable) {
+        // best-effort; Governance retention is always removable by a permitted principal.
+    }
+}

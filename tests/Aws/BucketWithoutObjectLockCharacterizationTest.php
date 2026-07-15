@@ -31,6 +31,12 @@
 
 use Chronicle\AnchorS3\S3ObjectLockAnchor;
 
+beforeEach(function () {
+    if ($reason = awsLockBucketSkipReason()) {
+        $this->markTestSkipped($reason);
+    }
+});
+
 it('leaves no deletable object when anchoring to a versioned bucket with Object Lock OFF', function () {
     $s3 = makeAwsS3Client();
     $bucket = createTestBucket($s3);
