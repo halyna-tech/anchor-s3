@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Aws\MockHandler;
 use Aws\S3\S3Client;
 use Chronicle\AnchorS3\Tests\TestCase;

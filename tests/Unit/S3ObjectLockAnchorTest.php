@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Aws\Api\DateTimeResult;
 use Aws\Command;
 use Aws\CommandInterface;
@@ -26,7 +28,7 @@ it('throws when bucket is missing from config', function () {
 /**
  * Build an unsaved Checkpoint for digest-level assertions. Setting created_at
  * needs a DB connection resolver, which the testbench TestCase (bound in
- * tests/Pest.php) provides — that is why unit tests extend it.
+ * tests/Pest.php) provides - that is why unit tests extend it.
  */
 function fakeCheckpoint(): Checkpoint
 {
@@ -133,5 +135,72 @@ it('verify() returns false when GetObject throws (missing object)', function () 
 
     $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket', 'prefix' => 'anchors'], $s3);
 
+    expect($anchor->verify($cp, s3Receipt($cp)))->toBeFalse();
+});
+
+it('anchor() throws when PutObject returns no ETag/VersionId (bucket not versioned/locked)', function () {
+    $cp = fakeCheckpoint();
+    $s3 = makeMockS3Client([new Result([])]); // neither ETag nor VersionId returned
+
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket', 'prefix' => 'anchors'], $s3);
+
+    expect(fn () => $anchor->anchor($cp))->toThrow(RuntimeException::class);
+});
+
+it('verify() returns false when the receipt reference is null', function () {
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket'], makeMockS3Client());
+
+    $receipt = new AnchorReceipt(
+        provider: 's3-object-lock',
+        reference: null,
+        proof: null,
+        anchoredAt: now()->toImmutable(),
+    );
+
+    expect($anchor->verify(fakeCheckpoint(), $receipt))->toBeFalse();
+});
+
+it('verify() returns false when the reference has no @version separator', function () {
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket'], makeMockS3Client());
+
+    $receipt = new AnchorReceipt(
+        provider: 's3-object-lock',
+        reference: 'worm-bucket/anchors/x.digest', // no '@versionId'
+        proof: null,
+        anchoredAt: now()->toImmutable(),
+    );
+
+    expect($anchor->verify(fakeCheckpoint(), $receipt))->toBeFalse();
+});
+
+it('verify() returns false when the reference lacks a bucket/key slash or carries an empty version', function () {
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket'], makeMockS3Client());
+
+    $noSlash = new AnchorReceipt(
+        provider: 's3-object-lock',
+        reference: 'nobucketkey@ver-123', // '@' present but no '/' in the bucket/key half
+        proof: null,
+        anchoredAt: now()->toImmutable(),
+    );
+    $emptyVersion = new AnchorReceipt(
+        provider: 's3-object-lock',
+        reference: 'worm-bucket/anchors/x.digest@', // trailing '@' -> empty versionId
+        proof: null,
+        anchoredAt: now()->toImmutable(),
+    );
+
+    expect($anchor->verify(fakeCheckpoint(), $noSlash))->toBeFalse()
+        ->and($anchor->verify(fakeCheckpoint(), $emptyVersion))->toBeFalse();
+});
+
+it('verify() returns false when the ETag proof no longer matches the stored object', function () {
+    $cp = fakeCheckpoint();
+    // Digest and lock metadata are correct, but the object's ETag differs from
+    // the receipt proof -> the proof check must reject it.
+    $s3 = makeMockS3Client([lockedGetResult(CheckpointDigest::for($cp), ['ETag' => '"tampered-etag"'])]);
+
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket', 'prefix' => 'anchors'], $s3);
+
+    // s3Receipt()'s proof is '"etag-abc"', which no longer matches.
     expect($anchor->verify($cp, s3Receipt($cp)))->toBeFalse();
 });

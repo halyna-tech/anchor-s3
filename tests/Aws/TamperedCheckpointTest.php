@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Real AWS. A checkpoint that differs from what was anchored must NOT verify
  * against the immutable object - even though the anchored object is untouched.

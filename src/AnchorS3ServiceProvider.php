@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Chronicle\AnchorS3;
 
 use Aws\S3\S3Client;

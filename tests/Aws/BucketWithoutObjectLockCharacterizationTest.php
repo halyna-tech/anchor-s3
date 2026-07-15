@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * =============================================================================
  * CHARACTERIZATION TEST - real AWS. NO src/ changes accompany this file.

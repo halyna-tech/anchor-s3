@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Real AWS. Reads retention back off the anchored object via GetObjectRetention
  * and asserts it is present and Governance. Complements the delete-must-fail

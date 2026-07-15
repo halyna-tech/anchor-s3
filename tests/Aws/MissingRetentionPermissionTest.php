@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * Real AWS. Credentials lacking s3:PutObjectRetention must make anchoring FAIL
  * LOUDLY, never silently write an unprotected object. Uses a separate, optional

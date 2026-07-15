@@ -2,7 +2,7 @@
 
 An [S3 Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html)
 (WORM) anchoring adapter for [`laravel-chronicle/core`](https://github.com/laravel-chronicle/core).
-It writes each checkpoint's digest — `sha256(id . chain_hash . created_at)` — to a
+It writes each checkpoint's digest - `sha256(id . chain_hash . created_at)` - to a
 **locked, versioned** S3 object in an independent trust domain. Even an attacker who
 rewrites the ledger and re-signs every checkpoint with a valid key cannot alter the
 locked object, so `chronicle:verify --anchors` fails on the tampered checkpoint.
@@ -33,7 +33,7 @@ aws s3api put-object-lock-configuration \
   --object-lock-configuration '{"ObjectLockEnabled":"Enabled","Rule":{"DefaultRetention":{"Mode":"COMPLIANCE","Days":3650}}}'
 ```
 
-- **COMPLIANCE** (default): no one — not even the root account — can delete or
+- **COMPLIANCE** (default): no one - not even the root account - can delete or
   shorten retention until it expires. Use for regulated/SOC 2 profiles.
 - **GOVERNANCE**: principals with `s3:BypassGovernanceRetention` can override.
 
@@ -64,21 +64,21 @@ attest stored anchors with `chronicle:anchor:verify` / `chronicle:verify --ancho
 
 On the anchor bucket (`arn:aws:s3:::my-chronicle-anchors/*` and the bucket ARN):
 
-| Action | Used by | Why |
-|--------|---------|-----|
-| `s3:PutObject` | `anchor()` | Write the digest object |
+| Action                  | Used by    | Why                                    |
+|-------------------------|------------|----------------------------------------|
+| `s3:PutObject`          | `anchor()` | Write the digest object                |
 | `s3:PutObjectRetention` | `anchor()` | Apply per-object Object Lock retention |
-| `s3:GetObject` | `verify()` | Re-read the exact object version |
-| `s3:GetObjectVersion` | `verify()` | Read by `VersionId` |
-| `s3:GetObjectRetention` | `verify()` | Confirm lock metadata |
+| `s3:GetObject`          | `verify()` | Re-read the exact object version       |
+| `s3:GetObjectVersion`   | `verify()` | Read by `VersionId`                    |
+| `s3:GetObjectRetention` | `verify()` | Confirm lock metadata                  |
 
-Grant **no** `s3:DeleteObject*` — anchors are write-once by design.
+Grant **no** `s3:DeleteObject*` - anchors are write-once by design.
 
 ## How it works
 
-- `anchor()` → `PutObject` of the digest with `ObjectLockMode` + `ObjectLockRetainUntilDate`.
+- `anchor()` -> `PutObject` of the digest with `ObjectLockMode` + `ObjectLockRetainUntilDate`.
   Receipt: `reference = "bucket/key@versionId"`, `proof = ETag`.
-- `verify()` → `GetObject` of that exact version; passes only if the stored bytes equal
+- `verify()` -> `GetObject` of that exact version; passes only if the stored bytes equal
   the recomputed digest **and** lock metadata is present **and** the ETag matches.
 
 `verify()` makes one S3 read; it is **not** offline (unlike the core RFC 3161 anchor),
@@ -87,6 +87,6 @@ which is the deliberate trade for an independent, account-isolated trust domain.
 ## Testing
 
 ```bash
-composer test       # Pest (mocked S3 — never touches a real bucket)
+composer test       # Pest (mocked S3 - never touches a real bucket)
 composer analyse    # PHPStan level 10
 ```

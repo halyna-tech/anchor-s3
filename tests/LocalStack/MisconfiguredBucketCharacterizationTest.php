@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * LocalStack tier - CHARACTERIZATION ONLY. Documents what LocalStack does when
  * the adapter anchors to a bucket WITHOUT Object Lock. LocalStack does not

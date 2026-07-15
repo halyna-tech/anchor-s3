@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     // Region used by the default S3Client binding. Per-provider config in
     // chronicle.anchoring.providers overrides bucket/mode/retention, not this.

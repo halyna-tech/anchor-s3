@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * =============================================================================
  * THE test. Real AWS, real Object Lock. This is the only test in the repo that

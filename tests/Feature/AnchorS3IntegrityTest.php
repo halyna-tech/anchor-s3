@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Aws\Api\DateTimeResult;
 use Aws\CommandInterface;
 use Aws\Result;

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * LocalStack tier. Asserts the retention was TRANSMITTED and echoed back by the
  * API - NOT that the object is protected. LocalStack does not enforce Object

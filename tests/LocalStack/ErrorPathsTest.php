@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * LocalStack tier. Error-path conversation: missing bucket and unreachable
  * endpoint both surface as thrown exceptions, never as a successful anchor.

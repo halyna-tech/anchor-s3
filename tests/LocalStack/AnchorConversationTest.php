@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * LocalStack tier. LocalStack does NOT enforce Object Lock - it accepts a
  * retention header and returns 200 for an object that stays fully deletable.

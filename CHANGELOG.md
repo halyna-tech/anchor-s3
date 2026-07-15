@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- End-to-end coverage proves an S3-Object-Lock-anchored checkpoint passes `chronicle:verify --anchors` against a mocked S3 client, and (via the unit suite) that a rewritten checkpoint whose recomputed digest no longer matches the immutable object FAILS verification — external WORM storage defeats a full in-database compromise.
+- End-to-end coverage proves an S3-Object-Lock-anchored checkpoint passes `chronicle:verify --anchors` against a mocked S3 client, and (via the unit suite) that a rewritten checkpoint whose recomputed digest no longer matches the immutable object FAILS verification - external WORM storage defeats a full in-database compromise.
 
 [Unreleased]: https://github.com/laravel-chronicle/anchor-s3/compare/1.0.0...HEAD
 [1.0.0]: https://github.com/laravel-chronicle/anchor-s3/releases/tag/1.0.0
