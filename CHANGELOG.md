@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] - 2026-07-15
+
 ### Added
 
 - Three-tier test layout via Pest groups (`unit`, `localstack`, `aws`) with Composer scripts `test:unit` (zero-config default, excludes the network tiers), `test:localstack`, `test:aws`, and `test:all`. The default `composer test` still runs lint + types + unit only, so a first contribution needs no Docker, no AWS account, and no network.
@@ -14,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-AWS test tier (`composer test:aws`) that validates the core immutability claim against live S3 Object Lock: anchoring an object and then asserting the object and its version cannot be deleted without the governance bypass, that Governance retention is recorded and readable, that a tampered checkpoint fails verification while the genuine one still passes, and that credentials lacking `s3:PutObjectRetention` fail loudly instead of writing an unprotected object. The tier is Governance-mode only - the bootstrap fails hard and writes nothing if `ANCHOR_S3_TEST_RETENTION_MODE` is not exactly `GOVERNANCE` - reads its bucket from `ANCHOR_S3_TEST_BUCKET` with no default, and cleans up in a `finally` so a failing assertion still tears the object down.
 - CI runs the unit and LocalStack tiers on every push and pull request (including forks - no secrets needed), and the real-AWS tier only on push to `main` and a nightly schedule, gated, so it skips cleanly when AWS secrets are absent rather than producing red checks on external contributions.
 - `.env.example` documenting every variable the network tiers read (LocalStack endpoint, AWS credentials/region, the no-default `ANCHOR_S3_TEST_BUCKET`, and the Governance-only `ANCHOR_S3_TEST_RETENTION_MODE`), and an updated `CONTRIBUTING.md` describing the three tiers, when a contributor needs each, the AWS bucket + scoped-IAM + lifecycle setup, and the full Governance-mode warning. `.env` is git-ignored.
+
+### Changed
+
+- **BREAKING (behavioral default): the default Object Lock retention mode is now `GOVERNANCE`, not `COMPLIANCE`.** An anchor configured without an explicit `mode` previously wrote objects under COMPLIANCE retention, which cannot be removed by anyone - including the account root user - until it expires; it now writes under GOVERNANCE retention, which a principal holding `s3:BypassGovernanceRetention` can lift. Any `mode` value other than the exact string `COMPLIANCE` resolves to `GOVERNANCE`, so an unrecognized value or typo fails safe toward the recoverable mode rather than the irreversible one. To keep the previous behavior, set `mode` to `COMPLIANCE` explicitly. Objects already written under COMPLIANCE in 1.0.0 are immutable and unaffected; only the mode applied to new, unconfigured anchors changes.
 
 ---
 
@@ -33,5 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - End-to-end coverage proves an S3-Object-Lock-anchored checkpoint passes `chronicle:verify --anchors` against a mocked S3 client, and (via the unit suite) that a rewritten checkpoint whose recomputed digest no longer matches the immutable object FAILS verification - external WORM storage defeats a full in-database compromise.
 
-[Unreleased]: https://github.com/laravel-chronicle/anchor-s3/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/laravel-chronicle/anchor-s3/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/laravel-chronicle/anchor-s3/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/laravel-chronicle/anchor-s3/releases/tag/1.0.0

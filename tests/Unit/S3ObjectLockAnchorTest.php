@@ -73,6 +73,76 @@ it('anchor() PutObjects the digest under an object lock and returns a receipt', 
 
 });
 
+it('defaults to GOVERNANCE when no mode is configured', function () {
+    // Safety-critical default. GOVERNANCE retention can be lifted by a permitted
+    // principal; COMPLIANCE cannot be removed by anyone until it expires. A user
+    // who omits `mode` must land on the recoverable one, never the irreversible
+    // one. This test pins that so a future change cannot silently flip it back.
+    $cp = fakeCheckpoint();
+
+    $captured = null;
+    $s3 = makeMockS3Client([
+        function (CommandInterface $cmd, RequestInterface $req) use (&$captured): Result {
+            $captured = $cmd->toArray();
+
+            return new Result(['ETag' => '"etag-abc"', 'VersionId' => 'ver-123']);
+        },
+    ]);
+
+    // No 'mode' key at all - exercise the default path, not an explicit value.
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket'], $s3);
+
+    $anchor->anchor($cp);
+
+    expect($captured['ObjectLockMode'])->toBe('GOVERNANCE');
+});
+
+
+it('falls back to GOVERNANCE when mode is set to an unrecognized value', function () {
+    // Anything that is not exactly 'COMPLIANCE' must resolve to GOVERNANCE - a
+    // typo or garbage value must fail-safe, never silently select COMPLIANCE.
+    $cp = fakeCheckpoint();
+
+    $captured = null;
+    $s3 = makeMockS3Client([
+        function (CommandInterface $cmd, RequestInterface $req) use (&$captured): Result {
+            $captured = $cmd->toArray();
+
+            return new Result(['ETag' => '"etag-abc"', 'VersionId' => 'ver-123']);
+        },
+    ]);
+
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket', 'mode' => 'compliance'], $s3);
+
+    $anchor->anchor($cp);
+
+    // Lowercase 'compliance' is not the exact token 'COMPLIANCE', so it must not
+    // be honored as COMPLIANCE - it falls through to the safe default.
+    expect($captured['ObjectLockMode'])->toBe('GOVERNANCE');
+});
+
+
+it('honors an explicit COMPLIANCE mode', function () {
+    // The opt-in path still works: an exact 'COMPLIANCE' must reach the wire, so
+    // production deployments that deliberately choose it are not quietly downgraded.
+    $cp = fakeCheckpoint();
+
+    $captured = null;
+    $s3 = makeMockS3Client([
+        function (CommandInterface $cmd, RequestInterface $req) use (&$captured): Result {
+            $captured = $cmd->toArray();
+
+            return new Result(['ETag' => '"etag-abc"', 'VersionId' => 'ver-123']);
+        },
+    ]);
+
+    $anchor = new S3ObjectLockAnchor(['bucket' => 'worm-bucket', 'mode' => 'COMPLIANCE'], $s3);
+
+    $anchor->anchor($cp);
+
+    expect($captured['ObjectLockMode'])->toBe('COMPLIANCE');
+});
+
 /**
  * A GetObject Result for a locked object holding $body.
  *

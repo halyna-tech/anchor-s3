@@ -26,7 +26,7 @@ use Throwable;
  * Config keys (in chronicle.anchoring.providers.<name>):
  *    bucket       - Object-Lock-enabled bucket (required)
  *    prefix       - key prefix (optional, default 'chronicle/anchors')
- *    mode         - 'COMPLIANCE' (default) or 'GOVERNANCE'
+ *    mode         - 'GOVERNANCE' (default) or 'COMPLIANCE'
  *    retain_days  - retention in days (optional, default 3650)
  */
 class S3ObjectLockAnchor implements AnchorProvider
@@ -61,7 +61,7 @@ class S3ObjectLockAnchor implements AnchorProvider
 
         $this->bucket = $bucket;
         $this->prefix = is_string($prefix) && $prefix !== '' ? trim($prefix, '/') : 'chronicle/anchors';
-        $this->mode = $mode === 'GOVERNANCE' ? 'GOVERNANCE' : 'COMPLIANCE';
+        $this->mode = $mode === 'COMPLIANCE' ? 'COMPLIANCE' : 'GOVERNANCE';
         $this->retainDays = is_int($retain) && $retain > 0 ? $retain : 3650;
         $this->s3 = $client;
     }
