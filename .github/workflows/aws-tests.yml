@@ -5,6 +5,7 @@ on:
     branches: [main]
   schedule:
     - cron: '0 3 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,6 +34,10 @@ jobs:
           ANCHOR_S3_TEST_BUCKET: ${{ secrets.ANCHOR_S3_TEST_BUCKET }}
           ANCHOR_S3_TEST_RETENTION_MODE: GOVERNANCE
           ANCHOR_S3_AWS_TESTS: '1'
+          # Restricted key with s3:PutObject but NOT s3:PutObjectRetention, for
+          # the missing-permission test. When unset, that one test skips cleanly.
+          ANCHOR_S3_TEST_NOPERM_KEY: ${{ secrets.ANCHOR_S3_TEST_NOPERM_KEY }}
+          ANCHOR_S3_TEST_NOPERM_SECRET: ${{ secrets.ANCHOR_S3_TEST_NOPERM_SECRET }}
         run: |
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$ANCHOR_S3_TEST_BUCKET" ]; then
             echo "AWS secrets not configured; skipping real-AWS tier."
