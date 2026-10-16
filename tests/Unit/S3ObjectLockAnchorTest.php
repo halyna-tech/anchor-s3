@@ -215,7 +215,12 @@ it('anchor() throws when PutObject returns no ETag/VersionId (bucket not version
     $anchor = new S3ObjectLockAnchor(['bucket' => $bucket, 'prefix' => 'anchors'], $s3);
 
     expect(fn () => $anchor->anchor($cp))
-        ->toThrow(RuntimeException::class, $bucket);
+        ->toThrow(function (RuntimeException $e) use ($bucket) {
+            expect($e->getMessage())
+                ->toContain($bucket)
+                ->toContain('Object Lock')
+                ->toContain('versioning');
+        });
 });
 
 it('verify() returns false when the receipt reference is null', function () {
